@@ -1,6 +1,6 @@
 # Quantizer
 
-A lightweight PyTorch quantization library focusing on post-training static quantization for efficient CPU deployment.
+A lightweight PyTorch quantization Module focusing on post-training static quantization for efficient deployment of large-scale models at the edge.
 
 ## Features
 
@@ -13,8 +13,15 @@ A lightweight PyTorch quantization library focusing on post-training static quan
 ## Installation
 
 ```bash
+# Clone repository
 git clone https://github.com/afondiel/Quantizer.git
 cd Quantizer
+
+# Create and activate conda environment
+conda create -n qenv python=3.8
+conda activate qenv
+
+# Install requirements
 pip install -r requirements.txt
 ```
 
@@ -28,13 +35,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_path', required=True,
                        help='Path to local model or Hugging Face model ID')
-    parser.add_argument('--q_method', default='w8a32',
+    parser.add_argument('--qm', default='w8a32',
                        choices=['w8a32', 'w8a16'])
     args = parser.parse_args()
 
     quantizer = Quantizer()
     quantizer.load_model(args.model_path)
-    quantizer.quantize(q_method=args.q_method)
+    quantizer.quantize(q_method=args.qm)
     quantizer.save_model("./quantized_model")
 
 if __name__ == "__main__":
@@ -43,9 +50,8 @@ if __name__ == "__main__":
 
 Run quantization:
 ```bash
-python examples.py --model_path "Salesforce/codegen-350M-mono" --q_method w8a32
+python examples.py --model_path "Salesforce/codegen-350M-mono" --qm w8a32 --qmodel_path "./quantized_model"
 ```
-
 ## Roadmap
 
 ### Current Focus

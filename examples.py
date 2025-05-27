@@ -11,13 +11,13 @@ def parse_args():
         help='Path to local model directory or Hugging Face model ID'
     )
     parser.add_argument(
-        '--output_dir', 
+        '--qmodel_path', 
         type=str, 
         default='./quantized_model',
         help='Directory to save quantized model'
     )
     parser.add_argument(
-        '--q_method', 
+        '--qm', 
         type=str, 
         default='w8a32',
         choices=['w8a32', 'w8a16'],
@@ -35,10 +35,10 @@ def main():
     quantizer.load_model(args.model_path)
     
     # Apply quantization
-    quantizer.quantize(q_method=args.q_method)
+    quantizer.quantize(q_method=args.qm)
     
     # Save quantized model
-    quantizer.save_model(args.output_dir)
+    quantizer.save_model(args.qmodel_path)
 
 if __name__ == "__main__":
     main()

@@ -12,6 +12,11 @@ cd Quantizer
 ```
 3. Install dependencies:
 ```bash
+# Create and activate conda environment
+conda create -n qenv python=3.8
+conda activate qenv
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -25,7 +30,8 @@ git checkout -b feature/your-feature-name
 2. Make your changes
 3. Test your changes:
 ```bash
-python examples.py --model_path "Salesforce/codegen-350M-mono" --q_method w8a32
+# Run the example script
+python examples.py --model_path "Salesforce/codegen-350M-mono" --qm w8a32
 ```
 
 4. Commit your changes:

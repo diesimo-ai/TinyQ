@@ -165,58 +165,22 @@ def replace_linear_with_target_and_quantize(module, target_class, module_name_to
 #-------------------------------------------------------#
 
 class Quantizer:
-    """A minimal quantizer implementation supporting W8A32 and W8A16 quantization for Linear layers.
-    
-    Focuses on post-training static quantization for PyTorch models, particularly those from
-    Hugging Face Transformers library.
-    """
-    def __init__(self):
-        self.model = None
-        self.q_method = None
-        self.module_name_to_exclude = []
-
-    def load_model(self, model_path: str) -> None:
-        """Loads model from local path or Hugging Face Hub.
-        
-        Args:
-            model_path (str): Path to local model directory or Hugging Face model ID.
-                            For local paths, can be absolute or relative path.
-                            For HuggingFace models, use format 'org/model_name'
+    def __init__(self, model: nn.Module):
         """
-        self.model_path = model_path
-        print(f"Loading model from {self.model_path}...")
-        
-        try:
-            # Handle local paths (both absolute and relative)
-            local_path = os.path.expanduser(model_path)  # Expand ~ if present
-            if os.path.exists(local_path):
-                if os.path.isdir(local_path):
-                    self.model = AutoModelForCausalLM.from_pretrained(
-                        local_path,
-                        torch_dtype=torch.bfloat16,
-                        low_cpu_mem_usage=True,
-                        local_files_only=True  # Prevent HF from downloading
-                    )
-                else:
-                    raise NotImplementedError("Only directory-based model loading supported")
-            # If not a local path, try loading from HuggingFace Hub
-            else:
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    model_path,
-                    torch_dtype=torch.bfloat16,
-                    low_cpu_mem_usage=True
-                )
-            print("Model loaded successfully.")
-        except Exception as e:
-            print(f"Error loading model: {e}")
-            raise
-
-    def quantize(self, q_method: str, module_not_to_quantize: list = None) -> None:
-        """Applies quantization to the model.
-        
+        Initialize quantizer with a pre-loaded model
+        Args:
+            model: PyTorch model to quantize
+        """
+        self.model = model
+        self.quantized_model = None
+    
+    def quantize(self, q_method='w8a32'):
+        """
+        Quantize the model using specified method
         Args:
             q_method: Quantization method ('w8a32' or 'w8a16')
-            module_not_to_quantize: List of module names to exclude from quantization
+        Returns:
+            nn.Module: Quantized model
         """
         self.q_method = q_method
         self.module_name_to_exclude = module_not_to_quantize or []
@@ -232,24 +196,10 @@ class Quantizer:
             self.module_name_to_exclude
         )
         print(f"{q_method} quantization applied.")
-
-    def save_model(self, save_path: str) -> None:
-        """Saves the quantized model."""
-        if not self.model:
-            raise ValueError("No model loaded.")
-        
-        print(f"Saving quantized model to {save_path}...")
-        try:
-            if hasattr(self.model, 'save_pretrained'):
-                self.model.save_pretrained(save_path)
-            else:
-                torch.save(self.model.state_dict(), 
-                          os.path.join(save_path, "model_state_dict.pth"))
-            print("Model saved successfully.")
-        except Exception as e:
-            print(f"Error saving model: {e}")
-            raise
-
-    def get_quantized_model(self):
-        """Returns the quantized model."""
-        return self.model
+        return self.quantized_model
+    
+    def save_model(self, save_path: str):
+        """Save quantized model"""
+        if self.quantized_model is None:
+            raise ValueError("No quantized model available. Run quantize() first.")
+        torch.save(self.quantized_model.state_dict(), save_path)

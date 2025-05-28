@@ -1,6 +1,64 @@
+import os
 import torch
 import torch.nn.functional as F
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
+#-------------------------------------------------------#
+#           Preprocessing utilities                     #
+#-------------------------------------------------------#
+def load_model(model_path: str):
+    """
+    Load model and tokenizer from local path or HF model ID
+    Args:
+        model_path: Local path or HF model ID
+    Returns:
+        tuple: (model, tokenizer)
+    """
+    try:
+        # Try loading as local path first
+        if os.path.exists(model_path):
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                local_files_only=True,
+                trust_remote_code=True
+            )
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_path,
+                local_files_only=True,
+                trust_remote_code=True
+            )
+        else:
+            raise FileNotFoundError(
+                f"Model not found at {model_path}. "
+                "Please download the model first using:\n"
+                f"huggingface-cli download --resume-download {model_path}"
+            )
+        
+        return model, tokenizer
+    
+    except Exception as e:
+        raise RuntimeError(f"Failed to load model: {str(e)}")
+
+def get_generation(model, tokenizer, prompt: str, dtype=torch.float32):
+    """
+    Run inference on the model
+    Args:
+        model: PyTorch model
+        tokenizer: Model tokenizer  
+        prompt: Input text
+        dtype: Model dtype for inference
+    Returns:
+        str: Generated text
+    """
+    model.eval()
+    model = model.to(dtype=dtype)
+    
+    with torch.no_grad():
+        inputs = tokenizer(prompt, return_tensors="pt")
+        outputs = model.generate(**inputs, max_length=50)
+        result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    return result
 
 #-------------------------------------------------------#
 #           Core Quantization Functions                  #
@@ -127,3 +185,5 @@ def w8_a16_forward(weight, input, scales, bias=None):
     if bias is not None:
         output += bias
     return output
+
+

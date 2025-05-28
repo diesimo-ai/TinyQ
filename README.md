@@ -1,25 +1,39 @@
-# Quantizer
+# TinyQ
 
-A lightweight PyTorch quantization Module focusing on post-training static quantization for efficient deployment of large-scale models at the edge.
+A lightweight PyTorch model quantization library focused on simplicity and ease of use.
 
 ## Features
 
-* **Post-Training Quantization (PTQ) Focus:** Quantization is applied after model training
-* **Quantization Schemes:** Linear quantization (symmetric/asymmetric)
-* **Granular Methods:** Per-channel quantization for weights, per-tensor for activations
-* **Supported Bit-Widths:** W8A32 and W8A16 precision
-* **Model Support:** Works with PyTorch models, especially from Hugging Face Hub
+- `8-bit` weight quantization (W8A32, W8A16)
+- `32-bit` and `16-bit` activations for linear layers.
+- Support for PyTorch models with nn.Linear layers
+- Offline-first approach - no automatic downloads
+- Built-in benchmarking tools (Still to come)
+- Simple API (Still to come)
+
+
+## Project Structure
+
+```
+TinyQ/
+├── logs/              # Benchmark and training logs
+├── models/            # Local model storage
+├── tinyq.py           # Core quantization library
+├── utils.py           # Utility functions
+├── examples.py        # Usage examples
+└── bench.py           # Benchmarking tools (Coming soon)
+```
 
 ## Installation
 
 ```bash
 # Clone repository
-git clone https://github.com/afondiel/Quantizer.git
-cd Quantizer
+git clone https://github.com/afondiel/TinyQ.git
+cd TinyQ
 
 # Create and activate conda environment
-conda create -n qenv python=3.8
-conda activate qenv
+conda create -n tinyq python=3.8
+conda activate tinyq
 
 # Install requirements
 pip install -r requirements.txt
@@ -27,30 +41,45 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-```python
-from quantizer import Quantizer
-import argparse
+### 1. Download Your Target Model
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model_path', required=True,
-                       help='Path to local model or Hugging Face model ID')
-    parser.add_argument('--qm', default='w8a32',
-                       choices=['w8a32', 'w8a16'])
-    args = parser.parse_args()
+> [!IMPORTANT]
+> TinyQ operates in `offline` mode (i.e., locally). Download your models before using the library:
 
-    quantizer = Quantizer()
-    quantizer.load_model(args.model_path)
-    quantizer.quantize(q_method=args.qm)
-    quantizer.save_model("./quantized_model")
-
-if __name__ == "__main__":
-    main()
+```bash
+# Example for CodeGen model
+huggingface-cli download --resume-download Salesforce/codegen-350M-mono --local-dir ./models/Salesforce/codegen-350M-mono
 ```
 
-Run quantization:
+See the full [Model Setup Guide](docs/model_setup.md) for detailed instructions.
+
+### 2. Run Quantization
+
+```python
+from tinyq import Quantizer
+from utils.model_utils import load_model, get_generation
+
+# Load model from local path
+model, tokenizer = load_model("./models/Salesforce/codegen-350M-mono")
+
+# Initialize quantizer
+quantizer = Quantizer(model)
+
+# Quantize model (W8A32 or W8A16)
+quantized_model = quantizer.quantize(q_method="w8a32")
+
+# Test inference
+prompt = "def fibonacci(n):"
+result = get_generation(quantized_model, tokenizer, prompt)
+print(result)
+
+# Save quantized model
+quantizer.save_model("./quantized_model")
+```
+
+Using Commnand line:
 ```bash
-python examples.py --model_path "Salesforce/codegen-350M-mono" --qm w8a32 --qmodel_path "./quantized_model"
+python examples.py --model_path "./models/Salesforce/codegen-350M-mono" --qm w8a32 --qmodel_path "./quantized_model"
 ```
 ## Roadmap
 
@@ -65,6 +94,24 @@ python examples.py --model_path "Salesforce/codegen-350M-mono" --qm w8a32 --qmod
 - [ ] Model Support Extensions
 - [ ] Additional Layer Support
 - [ ] Performance Optimization
+
+## Demo
+
+The example below shows a Pytorch model trace before and after a W8A32 Quantization.
+
+Before: 
+
+![](./demo/model-before.png)
+
+After:
+
+![](./demo/model-after.png)
+
+You can also use a tool like [NEUTRON](https://netron.app/) get more in-depth insight and compare both models.
+
+## Benchmark
+
+(Still to Come)
 
 ## Contributing
 

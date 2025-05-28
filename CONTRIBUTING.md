@@ -1,14 +1,14 @@
-# Contributing to Quantizer
+# Contributing to TinyQ
 
-Thank you for your interest in contributing to Quantizer! This document outlines the process for contributing to this project.
+Thank you for your interest in contributing to TinyQ! This document outlines the process for contributing to this project.
 
 ## Getting Started
 
 1. Fork the repository
 2. Clone your fork:
 ```bash
-git clone https://github.com/afondiel/Quantizer.git
-cd Quantizer
+git clone https://github.com/afondiel/TinyQ.git
+cd TinyQ
 ```
 3. Install dependencies:
 ```bash

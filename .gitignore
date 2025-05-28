@@ -36,6 +36,7 @@ ENV/
 # Project specific
 quantized_models/
 models/
+datasets/
 outputs/
 logs/
 *.bin

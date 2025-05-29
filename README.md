@@ -1,34 +1,19 @@
 # TinyQ
 
-A lightweight PyTorch model quantization library focused on simplicity and ease of use.
+A compact, simple and efficient post-training quantization module built on the top of PyTorch's Modules. 
 
 ## Features
 
-- `8-bit` weight quantization (W8A32, W8A16)
-- `32-bit` and `16-bit` activations for linear layers.
-- Support for PyTorch models with nn.Linear layers
-- Offline-first approach - no automatic downloads
-- Built-in benchmarking tools (Still to come)
-- Simple API (Still to come)
-
-
-## Project Structure
-
-```
-TinyQ/
-├── logs/              # Benchmark and training logs
-├── models/            # Local model storage
-├── tinyq.py           # Core quantization library
-├── utils.py           # Utility functions
-├── examples.py        # Usage examples
-└── bench.py           # Benchmarking tools (Coming soon)
-```
+- **PTQ Focus**: quantize of all Linear Layers (nn.Linear)
+- **Quantization Methods**: `W8A32` (8-bit weights, 32-bit activations), `W8A16` (8-bit weights, 16-bit activations), `W8A8` (Coming soon!)
+- **Model Support**: PyTorch models from [Hugging Face Hub](https://huggingface.co/models?library=pytorch)
+- **Offline-first approach**: no automatic downloads from the cloud
+- **Built-in benchmarking**: Memory footprint vs latency tracking (Coming soon)
 
 ## Installation
 
 ```bash
-# Clone repository
-git clone https://github.com/afondiel/TinyQ.git
+git clone https://github.com/yourusername/TinyQ.git
 cd TinyQ
 
 # Create and activate conda environment
@@ -41,14 +26,14 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### 1. Download Your Target Model
+### 1. Download a Model
 
 > [!IMPORTANT]
-> TinyQ operates in `offline` mode (i.e., locally). Download your models before using the library:
+> This current version operates in `offline-only` mode. Download your model first:
 
 ```bash
-# Example for CodeGen model
-huggingface-cli download --resume-download Salesforce/codegen-350M-mono --local-dir ./models/Salesforce/codegen-350M-mono
+# Example: Download OPT-125M
+huggingface-cli download --resume-download facebook/opt-125m --local-dir ./models/facebook/opt-125m
 ```
 
 See the full [Model Setup Guide](docs/model_setup.md) for detailed instructions.
@@ -57,10 +42,10 @@ See the full [Model Setup Guide](docs/model_setup.md) for detailed instructions.
 
 ```python
 from tinyq import Quantizer
-from utils.model_utils import load_model, get_generation
+from utils import load_model, get_generation
 
-# Load model from local path
-model, tokenizer = load_model("./models/Salesforce/codegen-350M-mono")
+# Load model
+model, tokenizer = load_model("./models/facebook/opt-125m")
 
 # Initialize quantizer
 quantizer = Quantizer(model)
@@ -69,18 +54,45 @@ quantizer = Quantizer(model)
 quantized_model = quantizer.quantize(q_method="w8a32")
 
 # Test inference
-prompt = "def fibonacci(n):"
+prompt = "Hello, world!"
 result = get_generation(quantized_model, tokenizer, prompt)
 print(result)
-
-# Save quantized model
-quantizer.save_model("./quantized_model")
 ```
 
-Using Commnand line:
+### 3. Run Benchmark (On going)
+
 ```bash
-python examples.py --model_path "./models/Salesforce/codegen-350M-mono" --qm w8a32 --qmodel_path "./quantized_model"
+python bench.py --model_path "./models/facebook/opt-125m"
 ```
+
+## Command Line Interface (CLI) 
+
+```bash
+python examples.py \
+    --model_path "./models/facebook/opt-125m" \
+    --qm w8a32 \
+    --test_inference \
+    --qmodel_path "./quantized_model"
+```
+
+Arguments:
+- `--model_path`: Path to local model directory (required)
+- `--qm`: Quantization method [`w8a32`, `w8a16`] (default: w8a32)
+- `--test_inference`: Run inference test after quantization
+- `--qmodel_path`: Save path for quantized model (default: ./quantized_model)
+
+## Project Structure 
+
+```
+TinyQ/
+├── logs/              # Benchmark and training logs
+├── models/            # Local model storage
+├── tinyq.py           # Core quantization library
+├── utils.py           # Utility functions
+├── examples.py        # Usage examples
+└── bench.py           # Benchmarking tools (Coming soon)
+```
+
 ## Roadmap
 
 ### Current Focus
@@ -97,7 +109,7 @@ python examples.py --model_path "./models/Salesforce/codegen-350M-mono" --qm w8a
 
 ## Demo
 
-The example below shows a Pytorch model trace before and after a W8A32 Quantization.
+The example below shows a Pytorch model printout before and after applying W8A32 Quantization.
 
 Before: 
 
@@ -113,10 +125,20 @@ You can also use a tool like [NEUTRON](https://netron.app/) get more in-depth in
 
 (Still to Come)
 
-## Contributing
+## Contributing 
 
-Contributions are welcome! If you want to help this project grow, you can pick one of the listed topics in the [Roadmap](#roadmap). Please see the [Contributing Guidelines](CONTRIBUTING.md).
+Contributions are welcome! Please see the [Contributing Guidelines](CONTRIBUTING.md).
 
-## License
+## License 
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+This project started as a learning exercise from the [Quantization Fundamentals](https://www.deeplearning.ai/short-courses/quantization-fundamentals-with-hugging-face/) course by DeepLearning.AI and Hugging Face, helping me understand the core concepts behind model quantization.
+
+Special thanks to:
+- Younes Belkada & Marc Sun for their excellent instruction and course content
+- Andrew Ng and the DeepLearning.AI team for making AI education accessible and practical
+- [kaushikacharya](https://github.com/kaushikacharya) for their detailed course notes that provided valuable guidance
+

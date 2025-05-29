@@ -1,12 +1,18 @@
 import os
+import logging
 import torch
 import torch.nn.functional as F
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
 
 #-------------------------------------------------------#
 #           Preprocessing utilities                     #
 #-------------------------------------------------------#
-def load_model(model_path: str):
+def load_model(model_path: str, 
+               torch_dtype=torch.float32, 
+               device_map="cpu", 
+               trust_remote_code=True,
+               	**kwargs
+):
     """
     Load model and tokenizer from local path or HF model ID
     Args:
@@ -19,13 +25,17 @@ def load_model(model_path: str):
         if os.path.exists(model_path):
             model = AutoModelForCausalLM.from_pretrained(
                 model_path,
-                local_files_only=True,
-                trust_remote_code=True
+            	local_files_only=True,
+            	trust_remote_code=trust_remote_code,
+            	torch_dtype=torch_dtype,
+            	device_map=device_map,
+		        **kwargs
             )
             tokenizer = AutoTokenizer.from_pretrained(
                 model_path,
                 local_files_only=True,
-                trust_remote_code=True
+                trust_remote_code=trust_remote_code,
+                **kwargs
             )
         else:
             raise FileNotFoundError(
@@ -50,15 +60,69 @@ def get_generation(model, tokenizer, prompt: str, dtype=torch.float32):
     Returns:
         str: Generated text
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.eval()
-    model = model.to(dtype=dtype)
-    
+    model = model.to(device)
+
+    inputs = tokenizer(prompt, return_tensors="pt")
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    pad_token_id = tokenizer.pad_token_id
+    if pad_token_id is None:
+        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        pad_token_id = tokenizer.pad_token_id
+        model.resize_token_embeddings(len(tokenizer))
+
     with torch.no_grad():
-        inputs = tokenizer(prompt, return_tensors="pt")
-        outputs = model.generate(**inputs, max_length=50)
-        result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=20,
+            pad_token_id=pad_token_id
+        )
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+def get_generation_from_pipe(model_path: str):
+    """
+    Load a text-generation pipeline using a local model and tokenizer.
+    """
+    # Load tokenizer and model from local directory
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_path,
+        local_files_only=True
+    )
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        local_files_only=True,
+        torch_dtype=torch.float32,  # or torch.float32 for explicitness
+        low_cpu_mem_usage=True
+    )
+    # Create the pipeline
+    generator = pipeline(
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        device=-1  # -1 means CPU
+    )
+    return generator
+
+def setup_logging(name: str, log_dir: str = "logs"):
+    """
+    Setup logging configuration
+    Args:
+        name: Logger name (e.g. 'tinyq', 'benchmark', 'quantizer')
+        log_dir: Base directory for logs
+    """
+    log_path = os.path.join(log_dir, f"{name}.log")
+    os.makedirs(log_dir, exist_ok=True)
     
-    return result
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_path),
+            logging.StreamHandler()
+        ]
+    )
+    return logging.getLogger(name)
 
 #-------------------------------------------------------#
 #           Core Quantization Functions                  #

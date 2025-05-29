@@ -1,11 +1,12 @@
 import os
+import logging
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM
 
 from utils import (linear_q_symmetric_per_channel, 
-                  w8_a32_forward, 
-                  w8_a16_forward)
+                  w8_a32_forward, w8_a16_forward, 
+                  setup_logging)
 
 class W8A32LinearLayer(nn.Module):
     """
@@ -124,11 +125,15 @@ def replace_linear_with_target(module, target_class, module_name_to_exclude):
 def replace_linear_with_target_and_quantize(module, target_class, module_name_to_exclude):
     """
     Replaces nn.Linear layers with instances of target_class and quantizes weights.
-    Handles different target_class __init__ signatures.
+    Returns the modified module with quantized layers.
+    
     Args:
         module (nn.Module): The module to modify.
         target_class (type): The class to replace nn.Linear with.
         module_name_to_exclude (list): List of module names to exclude from replacement.
+    
+    Returns:
+        nn.Module: Module with quantized linear layers
     """
     for name, child in module.named_children():
         if isinstance(child, nn.Linear) and not any([x==name for x in module_name_to_exclude]):
@@ -158,23 +163,33 @@ def replace_linear_with_target_and_quantize(module, target_class, module_name_to
         else:
             # Recursively call for nested modules
             replace_linear_with_target_and_quantize(child, target_class, module_name_to_exclude)
-
+    
+    return module
 
 #-------------------------------------------------------#
 #           Quantizer Workflow                          #
 #-------------------------------------------------------#
 
 class Quantizer:
-    def __init__(self, model: nn.Module):
+    def __init__(self, model: nn.Module, logger=None):
         """
         Initialize quantizer with a pre-loaded model
         Args:
             model: PyTorch model to quantize
+            logger: Main logger instance from parent module
         """
         self.model = model
         self.quantized_model = None
+
+        # Setup logging
+        self.logger = setup_logging("quantizer", "logs")
+        self.main_logger = logger
+        if self.main_logger:
+            self.main_logger.info("Quantizer Module object created")
+            self.main_logger.debug(f"Model type: {type(model).__name__}")
+
     
-    def quantize(self, q_method='w8a32'):
+    def quantize(self, q_method='w8a32', module_not_to_quantize=None):
         """
         Quantize the model using specified method
         Args:
@@ -182,20 +197,34 @@ class Quantizer:
         Returns:
             nn.Module: Quantized model
         """
-        self.q_method = q_method
         self.module_name_to_exclude = module_not_to_quantize or []
 
-        if self.q_method not in ["w8a32", "w8a16"]:
+        if q_method not in ["w8a32", "w8a16"]:
+            self.logger.error(f"Unsupported quantization method: {q_method}")
             raise ValueError("Supported methods: 'w8a32', 'w8a16'")
 
         target_class = W8A32LinearLayer if q_method == "w8a32" else W8A16LinearLayer
-        print(f"Applying {q_method} quantization...")
-        replace_linear_with_target_and_quantize(
+        
+        # Log to both loggers
+        self.logger.info(f"Starting {q_method} quantization")
+        if self.main_logger:
+            self.main_logger.info(f"Applying {q_method} quantization...")
+        
+        # User feedback in console
+        print(f"Quantizing model with {q_method}...")
+        
+        self.quantized_model = replace_linear_with_target_and_quantize(
             self.model, 
             target_class, 
             self.module_name_to_exclude
         )
-        print(f"{q_method} quantization applied.")
+
+        # Log completion
+        self.logger.info("Quantization completed successfully")
+        if self.main_logger:
+            self.main_logger.info(f"{q_method} quantization applied")
+        
+        print("Quantization completed!")        
         return self.quantized_model
     
     def save_model(self, save_path: str):

@@ -13,7 +13,7 @@ A compact, simple and efficient post-training quantization module built on the t
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/TinyQ.git
+git clone https://github.com/afondiel/TinyQ.git
 cd TinyQ
 
 # Create and activate conda environment
@@ -109,7 +109,7 @@ TinyQ/
 
 ## Demo
 
-The example below shows a Pytorch model printout before and after applying W8A32 Quantization.
+The examples below shows a Pytorch model printout before and after applying W8A32 Quantization.
 
 Before: 
 
@@ -140,5 +140,5 @@ This project started as a learning exercise from the [Quantization Fundamentals]
 Special thanks to:
 - Younes Belkada & Marc Sun for their excellent instruction and course content
 - Andrew Ng and the DeepLearning.AI team for making AI education accessible and practical
-- [kaushikacharya](https://github.com/kaushikacharya) for their detailed course notes that provided valuable guidance
+- [kaushikacharya](https://github.com/kaushikacharya) for his detailed course notes that provided valuable guidance
 

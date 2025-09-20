@@ -64,11 +64,14 @@ from utils import load_local_hf_model, get_generation
 # Load model
 model, tokenizer = load_local_hf_model("./models/facebook/opt-125m")
 
-# Initialize quantizer
-quantizer = Quantizer(model)
+# Initialize tinyq quantizer and additional resources
+q = Quantizer()
 
 # Quantize model (W8A32 or W8A16)
-qmodel = quantizer.quantize(q_method="w8a32")
+qmodel = q.quantize(model, q_method="w8a32")
+
+# Save Quantized Model
+q.export(qmodel_path, qmodel)
 
 # Test inference
 prompt = "Hello, my name is"

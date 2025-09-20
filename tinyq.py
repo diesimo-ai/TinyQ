@@ -171,14 +171,14 @@ def replace_linear_with_target_and_quantize(module, target_class, module_name_to
 #-------------------------------------------------------#
 
 class Quantizer:
-    def __init__(self, model: nn.Module, logger=None):
+    def __init__(self, logger=None):
         """
         Initialize quantizer with a pre-loaded model
         Args:
             model: PyTorch model to quantize
             logger: Main logger instance from parent module
         """
-        self.model = model
+        self.model = None
         self.quantized_model = None
 
         # Setup logging
@@ -186,10 +186,9 @@ class Quantizer:
         self.main_logger = logger
         if self.main_logger:
             self.main_logger.info("Quantizer Module object created")
-            self.main_logger.debug(f"Model type: {type(model).__name__}")
 
     
-    def quantize(self, q_method='w8a32', module_not_to_quantize=None):
+    def quantize(self, model: nn.Module, q_method='w8a32', module_not_to_quantize=None):
         """
         Quantize the model using specified method
         Args:
@@ -197,6 +196,7 @@ class Quantizer:
         Returns:
             nn.Module: Quantized model
         """
+        self.model = model
         self.module_name_to_exclude = module_not_to_quantize or []
 
         if q_method not in ["w8a32", "w8a16"]:
@@ -227,8 +227,8 @@ class Quantizer:
         print("Quantization completed!")        
         return self.quantized_model
     
-    def save_model(self, save_path: str):
+    def export(self, qmodel_path: str, qmodel: nn.Module):
         """Save quantized model"""
-        if self.quantized_model is None:
+        if qmodel is None:
             raise ValueError("No quantized model available. Run quantize() first.")
-        torch.save(self.quantized_model.state_dict(), save_path)
+        torch.save(qmodel.state_dict(), qmodel_path)

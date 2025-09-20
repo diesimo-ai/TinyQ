@@ -29,12 +29,13 @@ def main(args):
         print(model)
 
         # Initialize quantizer with main logger
-        quantizer = Quantizer(model, logger=logger)
+        q = Quantizer(logger=logger)
         
         # Apply quantization
         logger.info(f"Quantizing model using {args.qm}")
-        qmodel = quantizer.quantize(
-            q_method=args.qm, 
+        qmodel = q.quantize(
+            model,
+            q_method=args.qm,
             module_not_to_quantize=['lm_head']
         )
 
@@ -58,12 +59,11 @@ def main(args):
                 )
             print("\nTest output:", result)
         
-        # Save quantized model if path provided
-        if args.qmodel_path:
-            logger.info(f"Saving quantized model to {args.qmodel_path}")
-            quantizer.save_model(args.qmodel_path)
-            print(f"Model saved to {args.qmodel_path}")
-        
+        # Save quantized model
+        logger.info(f"Saving quantized model to {args.qmodel_path}")
+        q.export(args.qmodel_path, qmodel)
+        print(f"Model saved to {args.qmodel_path}")
+
         logger.info("TinyQ session completed successfully")
         
     except Exception as e:

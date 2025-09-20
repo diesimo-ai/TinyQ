@@ -2,13 +2,13 @@
 
 A lightweight post-training quantization module built on the top of PyTorch's Modules. 
 
-## Features
+## Key features
 
 - **PTQ Focus**: quantize of all Linear Layers (nn.Linear)
 - **Quantization Methods**: `W8A32` (8-bit weights, 32-bit activations), `W8A16` (8-bit weights, 16-bit activations), `W8A8` (Coming soon!)
 - **Model Support**: PyTorch models from [Hugging Face Hub](https://huggingface.co/models?library=pytorch)
 - **Offline-first approach**: no automatic downloads from the cloud
-- **Built-in benchmarking**: Memory footprint vs latency tracking (Coming soon)
+- **Built-in benchmarking**: latency and memory footprint tracking
 
 ## Project Structure 
 
@@ -26,6 +26,10 @@ TinyQ/
 
 ### 1. Installation
 
+> ![NOTE] TinyQ is built with efficiency in mind to be used at the edge (locally) on both CPU and GPU based systems. 
+
+> The [requirements.txt](./requirements.txt) file uses a CUDA-enabled PyTorch. For systems without CUDA, please follow the PyTorch installation [guide](https://pytorch.org/get-started/locally/) to get the correct version.
+
 ```bash
 git clone https://github.com/afondiel/TinyQ.git
 cd TinyQ
@@ -41,7 +45,7 @@ pip install -r requirements.txt
 ### 2. Download a Model
 
 > [!IMPORTANT]
-> This current version operates in `offline-only` mode. Download your model first:
+> This current version operates in `offline-mode` only. Please, download a pytorch model from [HF Hub](https://huggingface.co/models?library=pytorch) to start with. You can also use the script below:
 
 ```bash
 # Example: Download OPT-125M

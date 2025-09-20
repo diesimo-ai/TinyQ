@@ -26,7 +26,7 @@ TinyQ/
 
 ### 1. Installation
 
-> ![NOTE] TinyQ is built with efficiency in mind to be used at the edge (locally) on both CPU and GPU based systems. 
+> [!NOTE] TinyQ is built with efficiency in mind to be used at the edge (locally) on both CPU and GPU based systems. 
 
 > The [requirements.txt](./requirements.txt) file uses a CUDA-enabled PyTorch. For systems without CUDA, please follow the PyTorch installation [guide](https://pytorch.org/get-started/locally/) to get the correct version.
 

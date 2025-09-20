@@ -1,18 +1,53 @@
 import os
 import logging
+from platform import processor
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+from transformers import pipeline, \
+      AutoTokenizer, AutoModelForCausalLM, \
+      AutoFeatureExtractor, AutoForAudioClassification 
+
+import requests
+import argparse
+
+from PIL import Image
+
+import warnings
 
 #-------------------------------------------------------#
 #           Preprocessing utilities                     #
 #-------------------------------------------------------#
-def load_model(model_path: str, 
-               torch_dtype=torch.float32, 
-               device_map="cpu", 
-               trust_remote_code=True,
-               	**kwargs
-):
+
+def setup_logging(name: str, log_dir: str = "logs"):
+    """
+    Setup logging configuration
+    Args:
+        name: Logger name (e.g. 'tinyq', 'benchmark', 'quantizer')
+        log_dir: Base directory for logs
+    """
+    log_path = os.path.join(log_dir, f"{name}.log")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_path),
+            logging.StreamHandler()
+        ]
+    )
+    return logging.getLogger(name)
+
+def load_image(img_url):
+    image = Image.open(requests.get(url=img_url, stream=True).raw).convert("RGB")
+    return image
+
+def load_local_hf_model(model_path: str,
+                  torch_dtype=torch.float32, 
+                  device_map="cpu",
+                  trust_remote_code=True,
+                  **kwargs):
     """
     Load model and tokenizer from local path or HF model ID
     Args:
@@ -49,23 +84,22 @@ def load_model(model_path: str,
     except Exception as e:
         raise RuntimeError(f"Failed to load model: {str(e)}")
 
-def get_generation(model, tokenizer, prompt: str, dtype=torch.float32):
-    """
-    Run inference on the model
-    Args:
-        model: PyTorch model
-        tokenizer: Model tokenizer  
-        prompt: Input text
-        dtype: Model dtype for inference
-    Returns:
-        str: Generated text
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def prepare_inputs(processor, input_data, device=None, dtype=torch.float32, extra_args={}):
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    inputs = processor(input_data, return_tensors="pt", **extra_args)
+    inputs = {k: v.to(device).to(dtype) for k, v in inputs.items()}
+    return inputs
+
+def generate_text(model, tokenizer, prompt: str, device=None, dtype=torch.float32):
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.eval()
-    model = model.to(device)
+    model.to(device)
 
     inputs = tokenizer(prompt, return_tensors="pt")
     inputs = {k: v.to(device) for k, v in inputs.items()}
+
     pad_token_id = tokenizer.pad_token_id
     if pad_token_id is None:
         tokenizer.add_special_tokens({'pad_token': '[PAD]'})
@@ -79,6 +113,34 @@ def get_generation(model, tokenizer, prompt: str, dtype=torch.float32):
             pad_token_id=pad_token_id
         )
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+def generate_modality(model, processor, input_data, device, dtype=torch.float32, extra_args={}):
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model.eval()
+    model.to(device)
+
+    inputs = prepare_inputs(processor, input_data, device, dtype, extra_args)
+    with torch.no_grad():
+        out = model.generate(**inputs)
+
+    return processor.decode(out[0], skip_special_tokens=True)
+
+def get_generation(model, modality: str, input_data, device=None, dtype=torch.float32, tokenizer=None, processor=None):
+    if modality == "text":
+        if tokenizer is None:
+            raise ValueError("Tokenizer must be provided for text modality")
+        return generate_text(model, tokenizer, input_data, device, dtype)
+    elif modality in ("audio", "image", "video"):
+        if processor is None:
+            raise ValueError(f"Processor must be provided for {modality} modality")
+        extra_args = {}
+        if modality == "audio":
+            extra_args["sampling_rate"] = 16000
+        return generate_modality(model, processor, input_data, device, dtype, extra_args)
+    else:
+        raise ValueError(f"Unsupported modality: {modality}. Available: text, audio, image, video")
 
 def get_generation_from_pipe(model_path: str):
     """
@@ -104,25 +166,52 @@ def get_generation_from_pipe(model_path: str):
     )
     return generator
 
-def setup_logging(name: str, log_dir: str = "logs"):
+def named_module_tensors(module, recurse=False):
+    for named_parameter in module.named_parameters(re   curse=recurse):
+        name, val = named_parameter
+        flag = True
+        if hasattr(val, "_data") or hasattr(val, "_scale"):
+            if hasattr(val, "_data"):
+                yield name + "._data", val._data
+            if hasattr(val, "_scale"):
+                yield name + "._scale", val._scale
+        else:
+            yield named_parameter
+
+    for named_buffer in module.named_buffers(recurse=recurse):
+        yield named_buffer
+
+def dtype_byte_size(dtype):
     """
-    Setup logging configuration
-    Args:
-        name: Logger name (e.g. 'tinyq', 'benchmark', 'quantizer')
-        log_dir: Base directory for logs
+    Returns the size (in bytes) occupied by one parameter of type `dtype`.
     """
-    log_path = os.path.join(log_dir, f"{name}.log")
-    os.makedirs(log_dir, exist_ok=True)
+    import re
     
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_path),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(name)
+    if dtype == torch.bool:
+        return 1/8
+    
+    bit_search = re.search(r"[^\d](\d+)$", str(dtype))
+    if bit_search is None:
+        raise ValueError(f"`dtype` is not a valid data type: {dtype}.")
+    
+    bit_size = int(bit_search.groups()[0])
+    return bit_size / 8
+
+def compute_model_sizes(model):
+    """
+    Compute the size of each submodule of a given model
+    """
+    from collections import defaultdict
+
+    module_sizes = defaultdict(int)
+
+    for name, tensor in named_module_tensors(module=model, recurse=True):
+        size = tensor.numel() * dtype_byte_size(tensor.dtype)
+        name_parts = name.split(".")
+        for idx in range(len(name_parts)+1):
+            module_sizes[".".join(name_parts[:idx])] += size
+    
+    return module_sizes
 
 #-------------------------------------------------------#
 #           Core Quantization Functions                  #

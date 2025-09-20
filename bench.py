@@ -230,15 +230,7 @@ def run_inference_vision(model, processor, image_path, logger, num_threads=None)
     
     return sum(latencies) / len(latencies)
 
-def main():
-    parser = argparse.ArgumentParser(description="Benchmark script for model quantization.")
-    parser.add_argument("--model_path", type=str, required=True,
-                      help="Path to local model directory")
-    parser.add_argument("--log_dir", type=str, default="logs",
-                      help="Directory for all logs")
-    parser.add_argument("--num_threads", type=int,
-                      help="Number of threads for inference")
-    args = parser.parse_args()
+def main(args):
     
     # Setup logging
     logger = setup_logging("benchmark", args.log_dir)
@@ -277,4 +269,11 @@ def main():
         raise
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Benchmark script for model quantization.")
+    parser.add_argument("--model_path", type=str, required=True, help="Path to local model directory")
+    parser.add_argument("--log_dir", type=str, default="logs", help="Directory for all logs")
+    parser.add_argument("--num_threads", type=int, help="Number of threads for inference")
+    
+    args = parser.parse_args()
+    
+    main(args)

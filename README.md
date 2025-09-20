@@ -1,6 +1,6 @@
 # TinyQ
 
-A compact, simple and efficient post-training quantization module built on the top of PyTorch's Modules. 
+A lightweight post-training quantization module built on the top of PyTorch's Modules. 
 
 ## Features
 
@@ -9,77 +9,6 @@ A compact, simple and efficient post-training quantization module built on the t
 - **Model Support**: PyTorch models from [Hugging Face Hub](https://huggingface.co/models?library=pytorch)
 - **Offline-first approach**: no automatic downloads from the cloud
 - **Built-in benchmarking**: Memory footprint vs latency tracking (Coming soon)
-
-## Installation
-
-```bash
-git clone https://github.com/afondiel/TinyQ.git
-cd TinyQ
-
-# Create and activate conda environment
-conda create -n tinyq python=3.8
-conda activate tinyq
-
-# Install requirements
-pip install -r requirements.txt
-```
-
-## Quick Start
-
-### 1. Download a Model
-
-> [!IMPORTANT]
-> This current version operates in `offline-only` mode. Download your model first:
-
-```bash
-# Example: Download OPT-125M
-huggingface-cli download --resume-download facebook/opt-125m --local-dir ./models/facebook/opt-125m
-```
-
-See the full [Model Setup Guide](docs/model_setup.md) for detailed instructions.
-
-### 2. Run Quantization
-
-```python
-from tinyq import Quantizer
-from utils import load_model, get_generation
-
-# Load model
-model, tokenizer = load_model("./models/facebook/opt-125m")
-
-# Initialize quantizer
-quantizer = Quantizer(model)
-
-# Quantize model (W8A32 or W8A16)
-quantized_model = quantizer.quantize(q_method="w8a32")
-
-# Test inference
-prompt = "Hello, world!"
-result = get_generation(quantized_model, tokenizer, prompt)
-print(result)
-```
-
-### 3. Run Benchmark (On going)
-
-```bash
-python bench.py --model_path "./models/facebook/opt-125m"
-```
-
-## Command Line Interface (CLI) 
-
-```bash
-python examples.py \
-    --model_path "./models/facebook/opt-125m" \
-    --qm w8a32 \
-    --test_inference \
-    --qmodel_path "./quantized_model"
-```
-
-Arguments:
-- `--model_path`: Path to local model directory (required)
-- `--qm`: Quantization method [`w8a32`, `w8a16`] (default: w8a32)
-- `--test_inference`: Run inference test after quantization
-- `--qmodel_path`: Save path for quantized model (default: ./quantized_model)
 
 ## Project Structure 
 
@@ -91,6 +20,74 @@ TinyQ/
 ├── utils.py           # Utility functions
 ├── examples.py        # Usage examples
 └── bench.py           # Benchmarking tools (Coming soon)
+```
+
+## Quick Start
+
+### 1. Installation
+
+```bash
+git clone https://github.com/afondiel/TinyQ.git
+cd TinyQ
+
+# Create and activate conda environment
+conda create -n tinyq python>=3.8
+conda activate tinyq
+
+# Install requirements
+pip install -r requirements.txt
+```
+
+### 2. Download a Model
+
+> [!IMPORTANT]
+> This current version operates in `offline-only` mode. Download your model first:
+
+```bash
+# Example: Download OPT-125M
+huggingface-cli download --resume-download facebook/opt-125m --local-dir ./models/facebook/opt-125m
+```
+
+See the full [Model Setup Guide](docs/model_setup.md) for detailed instructions.
+
+### 3. Run Quantization
+
+```python
+from tinyq import Quantizer
+from utils import load_local_hf_model, get_generation
+
+# Load model
+model, tokenizer = load_local_hf_model("./models/facebook/opt-125m")
+
+# Initialize quantizer
+quantizer = Quantizer(model)
+
+# Quantize model (W8A32 or W8A16)
+qmodel = quantizer.quantize(q_method="w8a32")
+
+# Test inference
+prompt = "Hello, world!"
+result = get_generation(qmodel, tokenizer, prompt)
+print(result)
+```
+
+## Usage 
+
+### 1. CLI Mode
+
+```bash
+python examples.py \
+    --model_path "./models/facebook/opt-125m" \
+    --qm w8a32 \
+    --test_inference \
+    --qmodel_path "./qmodel"
+```
+
+### 2. Run Performance Benchmarking
+
+```bash
+python bench.py \
+    --model_path "./models/facebook/opt-125m"
 ```
 
 ## Roadmap
@@ -121,7 +118,7 @@ After:
 
 You can also use a tool like [NEUTRON](https://netron.app/) get more in-depth insight and compare both models.
 
-## Benchmark
+## Benchmark Demo
 
 (Still to Come)
 

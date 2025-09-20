@@ -46,7 +46,7 @@ pip install -r requirements.txt
 ### 2. Download a Model
 
 > [!IMPORTANT]
-> This current version operates in `offline-mode` only. Please, download a pytorch model from [HF Hub](https://huggingface.co/models?library=pytorch) to start with. You can also use the script below:
+> The current version works in `offline-mode` only. Please, download a pytorch model from [HF Hub](https://huggingface.co/models?library=pytorch) to start with. You can also use the script below:
 
 ```bash
 # Example: Download OPT-125M
@@ -71,8 +71,12 @@ quantizer = Quantizer(model)
 qmodel = quantizer.quantize(q_method="w8a32")
 
 # Test inference
-prompt = "Hello, world!"
-result = get_generation(qmodel, tokenizer, prompt)
+prompt = "Hello, my name is"
+result = get_generation(model=qmodel, 
+                        modality="text", 
+                        input_data=prompt, 
+                        tokenizer=tokenizer)
+
 print(result)
 ```
 

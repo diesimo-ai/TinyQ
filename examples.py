@@ -52,8 +52,8 @@ def main(args):
                 result = get_generation(
                     qmodel,
                     "text",
-                    tokenizer,
                     input_data=prompt,
+                    tokenizer=tokenizer,
                     max_new_tokens=10
                 )
             print("\nTest output:", result)

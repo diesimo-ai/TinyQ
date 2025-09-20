@@ -64,7 +64,7 @@ from utils import load_local_hf_model, get_generation
 # Load model
 model, tokenizer = load_local_hf_model("./models/facebook/opt-125m")
 
-# Initialize tinyq quantizer and additional resources
+# Create tinyq quantizer object and additional resources
 q = Quantizer()
 
 # Quantize model (W8A32 or W8A16)
